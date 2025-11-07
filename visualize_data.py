@@ -7,6 +7,11 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
+import os
+
+# Create output directory for plots
+output_dir = 'plots'
+os.makedirs(output_dir, exist_ok=True)
 
 # Set style
 sns.set_style("whitegrid")
@@ -32,6 +37,28 @@ numeric_cols = ['FOV', 'Height', 'Angle', 'Distance', 'Stiffness', 'Swivel speed
 for col in numeric_cols:
     df[col] = pd.to_numeric(df[col], errors='coerce')
 
+# Define Rocket League camera settings ranges
+rl_ranges = {
+    'FOV': (60, 110),
+    'Distance': (240, 350),
+    'Height': (60, 150),
+    'Angle': (-15.0, 0.0),
+    'Stiffness': (0.00, 1.00),
+    'Swivel speed': (1.00, 10.00),
+    'Transition speed': (1.00, 2.00)
+}
+
+# Define pro ranges for reference
+pro_ranges = {
+    'FOV': (60, 110),  # Most use 110
+    'Distance': (250, 320),
+    'Height': (90, 130),
+    'Angle': (-5.0, -3.0),
+    'Stiffness': (0.35, 0.70),
+    'Swivel speed': (4.00, 7.00),
+    'Transition speed': (1.00, 1.50)
+}
+
 # 1. Distribution of numeric settings (Histograms)
 print("\nCreating distribution histograms...")
 fig, axes = plt.subplots(3, 3, figsize=(15, 12))
@@ -48,6 +75,16 @@ for idx, col in enumerate(numeric_cols):
     ax.set_title(f'{col} Distribution')
     ax.grid(True, alpha=0.3)
 
+    # Set axis limits based on RL ranges
+    if col in rl_ranges:
+        ax.set_xlim(rl_ranges[col])
+
+    # Add pro range shading
+    if col in pro_ranges:
+        pro_min, pro_max = pro_ranges[col]
+        ax.axvspan(pro_min, pro_max, alpha=0.15, color='green', label='Pro Range')
+        ax.legend(fontsize=8, loc='upper right')
+
 # Remove extra subplot
 fig.delaxes(axes[2, 2])
 
@@ -62,13 +99,13 @@ axes[2, 2].text(0.1, 0.5, stats_text, fontsize=12, verticalalignment='center',
 axes[2, 2].axis('off')
 
 plt.tight_layout()
-plt.savefig('distributions.png', dpi=300, bbox_inches='tight')
-print("Saved: distributions.png")
+plt.savefig(os.path.join(output_dir, 'distributions.png'), dpi=300, bbox_inches='tight')
+print(f"Saved: {output_dir}/distributions.png")
 
 # 2. Box plots for all numeric settings
 print("\nCreating box plots...")
 fig, axes = plt.subplots(2, 4, figsize=(16, 8))
-fig.suptitle('Camera Settings Box Plots', fontsize=16, fontweight='bold')
+fig.suptitle('Camera Settings Box Plots (with Pro Ranges)', fontsize=16, fontweight='bold')
 
 for idx, col in enumerate(numeric_cols):
     row = idx // 4
@@ -84,12 +121,22 @@ for idx, col in enumerate(numeric_cols):
     ax.set_title(f'{col}')
     ax.grid(True, alpha=0.3)
 
+    # Set y-axis limits based on RL ranges
+    if col in rl_ranges:
+        ax.set_ylim(rl_ranges[col])
+
+    # Add pro range indicators
+    if col in pro_ranges:
+        pro_min, pro_max = pro_ranges[col]
+        ax.axhspan(pro_min, pro_max, alpha=0.15, color='green', label='Pro Range')
+        ax.legend(fontsize=8, loc='upper right')
+
 # Remove extra subplot
 fig.delaxes(axes[1, 3])
 
 plt.tight_layout()
-plt.savefig('boxplots.png', dpi=300, bbox_inches='tight')
-print("Saved: boxplots.png")
+plt.savefig(os.path.join(output_dir, 'boxplots.png'), dpi=300, bbox_inches='tight')
+print(f"Saved: {output_dir}/boxplots.png")
 
 # 3. Correlation heatmap
 print("\nCreating correlation heatmap...")
@@ -99,17 +146,27 @@ sns.heatmap(correlation_matrix, annot=True, fmt='.2f', cmap='coolwarm',
             center=0, square=True, linewidths=1, cbar_kws={"shrink": 0.8})
 plt.title('Correlation Between Camera Settings', fontsize=16, fontweight='bold', pad=20)
 plt.tight_layout()
-plt.savefig('correlation_heatmap.png', dpi=300, bbox_inches='tight')
-print("Saved: correlation_heatmap.png")
+plt.savefig(os.path.join(output_dir, 'correlation_heatmap.png'), dpi=300, bbox_inches='tight')
+print(f"Saved: {output_dir}/correlation_heatmap.png")
 
 # 4. Scatter plots showing relationships
 print("\nCreating scatter plot matrix...")
 # Select key settings for scatter matrix
 key_settings = ['FOV', 'Height', 'Angle', 'Distance', 'Stiffness']
-sns.pairplot(df[key_settings].dropna(), diag_kind='kde', plot_kws={'alpha': 0.6})
+g = sns.pairplot(df[key_settings].dropna(), diag_kind='kde', plot_kws={'alpha': 0.6})
+
+# Set axis limits for each subplot based on RL ranges
+for i, col1 in enumerate(key_settings):
+    for j, col2 in enumerate(key_settings):
+        ax = g.axes[i, j]
+        if col1 in rl_ranges:
+            ax.set_ylim(rl_ranges[col1])
+        if col2 in rl_ranges:
+            ax.set_xlim(rl_ranges[col2])
+
 plt.suptitle('Relationships Between Key Camera Settings', y=1.01, fontsize=16, fontweight='bold')
-plt.savefig('scatter_matrix.png', dpi=300, bbox_inches='tight')
-print("Saved: scatter_matrix.png")
+plt.savefig(os.path.join(output_dir, 'scatter_matrix.png'), dpi=300, bbox_inches='tight')
+print(f"Saved: {output_dir}/scatter_matrix.png")
 
 # 5. Popular settings combinations
 print("\nCreating popular settings visualization...")
@@ -149,8 +206,8 @@ axes[1, 1].set_title('Most Popular Angle Settings')
 axes[1, 1].grid(True, alpha=0.3, axis='y')
 
 plt.tight_layout()
-plt.savefig('popular_settings.png', dpi=300, bbox_inches='tight')
-print("Saved: popular_settings.png")
+plt.savefig(os.path.join(output_dir, 'popular_settings.png'), dpi=300, bbox_inches='tight')
+print(f"Saved: {output_dir}/popular_settings.png")
 
 # 6. Stiffness vs Swivel Speed (interesting relationship)
 print("\nCreating stiffness vs swivel speed plot...")
@@ -161,16 +218,27 @@ plt.ylabel('Swivel Speed', fontsize=12, fontweight='bold')
 plt.title('Stiffness vs Swivel Speed', fontsize=16, fontweight='bold')
 plt.grid(True, alpha=0.3)
 
+# Set axis limits to Rocket League ranges
+plt.xlim(rl_ranges['Stiffness'])
+plt.ylim(rl_ranges['Swivel speed'])
+
+# Add pro range shading
+pro_stiff_min, pro_stiff_max = pro_ranges['Swivel speed']
+pro_swivel_min, pro_swivel_max = pro_ranges['Swivel speed']
+plt.axhspan(pro_swivel_min, pro_swivel_max, alpha=0.1, color='green', label='Pro Swivel Range')
+plt.axvspan(pro_ranges['Stiffness'][0], pro_ranges['Stiffness'][1], alpha=0.1, color='blue', label='Pro Stiffness Range')
+
 # Add trend line
 z = np.polyfit(df['Stiffness'].dropna(), df['Swivel speed'].dropna(), 1)
 p = np.poly1d(z)
-plt.plot(df['Stiffness'].sort_values(), p(df['Stiffness'].sort_values()),
+stiffness_range = np.linspace(rl_ranges['Stiffness'][0], rl_ranges['Stiffness'][1], 100)
+plt.plot(stiffness_range, p(stiffness_range),
          "r--", linewidth=2, label=f'Trend: y={z[0]:.2f}x+{z[1]:.2f}')
 plt.legend()
 
 plt.tight_layout()
-plt.savefig('stiffness_vs_swivel.png', dpi=300, bbox_inches='tight')
-print("Saved: stiffness_vs_swivel.png")
+plt.savefig(os.path.join(output_dir, 'stiffness_vs_swivel.png'), dpi=300, bbox_inches='tight')
+print(f"Saved: {output_dir}/stiffness_vs_swivel.png")
 
 # 7. Camera shake usage
 print("\nCreating camera shake analysis...")
@@ -192,13 +260,13 @@ ax2.pie(ball_camera_counts.values, labels=ball_camera_counts.index, autopct='%1.
 ax2.set_title('Ball Camera Setting')
 
 plt.tight_layout()
-plt.savefig('categorical_settings.png', dpi=300, bbox_inches='tight')
-print("Saved: categorical_settings.png")
+plt.savefig(os.path.join(output_dir, 'categorical_settings.png'), dpi=300, bbox_inches='tight')
+print(f"Saved: {output_dir}/categorical_settings.png")
 
 print("\n" + "="*50)
 print("VISUALIZATION COMPLETE!")
 print("="*50)
-print("\nGenerated files:")
+print(f"\nGenerated files in '{output_dir}/' directory:")
 print("  1. distributions.png - Histograms of all numeric settings")
 print("  2. boxplots.png - Box plots showing ranges and outliers")
 print("  3. correlation_heatmap.png - Correlation between settings")
